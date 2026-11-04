@@ -4,6 +4,31 @@ Mobilibus ao vivo helps you follow the current positions of buses for a chosen
 line on an interactive map. Vehicle information is supplied by the Mobilibus
 real-time feed and is refreshed automatically.
 
+## API proxy configuration
+
+The app never calls Mobilibus directly. All platforms request a proxy endpoint
+instead, so the Mobilibus access key stays on the server.
+
+For local development, start the proxy with the upstream URL stored in your
+shell or deployment-secret manager (the URL includes the provider access key):
+
+```powershell
+dart run -DMOBILIBUS_UPSTREAM_URL="https://provider.example/vehicle-positions?accesskey=SERVER_ONLY_SECRET" -DMOBILIBUS_ALLOWED_ORIGIN="http://localhost:3000" tool/mobilibus_proxy.dart
+```
+
+The default web-development endpoint is
+`http://localhost:8080/vehicle-positions`. For a deployed app, point every
+Flutter build to an HTTPS proxy:
+
+```powershell
+flutter build web --dart-define=MOBILIBUS_PROXY_URL=https://api.example.com/vehicle-positions
+```
+
+Set `MOBILIBUS_ALLOWED_ORIGIN` to the exact public web origin. Native requests
+do not include an `Origin` header. Android and iOS cleartext HTTP exceptions
+are disabled, so their proxy endpoint must use HTTPS. The proxy accepts only
+`GET` and `OPTIONS`.
+
 ## What you can do
 
 - View buses currently reporting position on the map.
