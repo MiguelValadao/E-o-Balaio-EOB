@@ -1,0 +1,45 @@
+name: Flutter Build APK
+
+# Define o que vai disparar a pipeline (neste caso, push na branch main)
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Faz o checkout do código do repositório
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Configura o Java (necessário para compilar Android)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 3. Configura o Flutter no ambiente virtual
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable' # ou a versão específica que você usa
+
+      # 4. Baixa as dependências do projeto
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 5. Executa a compilação do APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 6. Salva o APK gerado como um artefato para download
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
