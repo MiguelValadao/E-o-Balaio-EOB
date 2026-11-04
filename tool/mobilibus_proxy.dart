@@ -1,24 +1,13 @@
 import 'dart:io';
 
-/// Small backend proxy for the Flutter clients.
+const _upstreamUrl =
+    'http://realtime4.mobilibus.com/web/4ch6j/vehicle-positions?accesskey=982a57efd77a9462bf1665696fb25984';
+
+/// Development-only CORS proxy for the Flutter Web app.
 ///
-/// Configure the upstream URL, including its access key, only in the server
-/// environment with `-DMOBILIBUS_UPSTREAM_URL=...`. Do not pass that value to
-/// a Flutter build.
-const _upstreamUrl = String.fromEnvironment('MOBILIBUS_UPSTREAM_URL');
-const _allowedOrigin = String.fromEnvironment('MOBILIBUS_ALLOWED_ORIGIN');
+/// The upstream endpoint is GTFS-Realtime Protocol Buffers and does not send
+/// Access-Control-Allow-Origin. Keep the access key server-side for production.
 Future<void> main(List<String> arguments) async {
-  final upstreamUri = Uri.tryParse(_upstreamUrl);
-  if (upstreamUri == null ||
-      !upstreamUri.hasScheme ||
-      (upstreamUri.scheme != 'http' && upstreamUri.scheme != 'https')) {
-    stderr.writeln(
-      'MOBILIBUS_UPSTREAM_URL must be an absolute HTTP(S) URL. '
-      'Configure it only on the proxy server.',
-    );
-    exitCode = 64;
-    return;
-  }
   final port = _portFrom(arguments);
   HttpServer server;
   try {
@@ -34,12 +23,6 @@ Future<void> main(List<String> arguments) async {
   stdout.writeln('Mobilibus proxy listening at http://localhost:$port');
 
   await for (final request in server) {
-    if (!_isAllowedOrigin(request.headers.value(HttpHeaders.originHeader))) {
-      request.response.statusCode = HttpStatus.forbidden;
-      request.response.write('Origin is not allowed.');
-      await request.response.close();
-      continue;
-    }
     _addCorsHeaders(request.response);
     if (request.method == 'OPTIONS') {
       request.response.statusCode = HttpStatus.noContent;
@@ -54,7 +37,7 @@ Future<void> main(List<String> arguments) async {
     }
 
     try {
-      final upstreamRequest = await client.getUrl(upstreamUri);
+      final upstreamRequest = await client.getUrl(Uri.parse(_upstreamUrl));
       final upstreamResponse = await upstreamRequest.close();
       request.response.statusCode = upstreamResponse.statusCode;
       final contentType = upstreamResponse.headers.contentType;
@@ -79,13 +62,7 @@ int _portFrom(List<String> arguments) {
 
 void _addCorsHeaders(HttpResponse response) {
   response.headers
-    ..set(HttpHeaders.accessControlAllowOriginHeader, _allowedOrigin)
+    ..set(HttpHeaders.accessControlAllowOriginHeader, '*')
     ..set(HttpHeaders.accessControlAllowMethodsHeader, 'GET, OPTIONS')
     ..set(HttpHeaders.accessControlAllowHeadersHeader, 'Content-Type');
-}
-
-bool _isAllowedOrigin(String? origin) {
-  // Requests without an Origin header are native clients or same-origin calls.
-  if (origin == null) return true;
-  return _allowedOrigin.isNotEmpty && origin == _allowedOrigin;
 }
