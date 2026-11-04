@@ -20,6 +20,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
   late final LiveTrackingController _tracking;
   late final UserLocationController _userLocation;
   bool _isLinePanelCollapsed = false;
+  bool _hasInitialVehicleFocus = false;
 
   @override
   void initState() {
@@ -43,7 +44,10 @@ class _LiveMapPageState extends State<LiveMapPage> {
   void _onTrackingChanged() {
     if (!mounted) return;
     setState(() {});
-    _focusVisibleVehicles();
+    if (!_hasInitialVehicleFocus && _tracking.visibleVehicles.isNotEmpty) {
+      _hasInitialVehicleFocus = true;
+      _focusVisibleVehicles();
+    }
   }
 
   void _onLocationChanged() {

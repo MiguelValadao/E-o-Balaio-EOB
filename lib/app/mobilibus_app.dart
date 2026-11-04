@@ -9,7 +9,7 @@ class MobilibusApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'Mobilibus ao vivo',
+        title: 'MobiliBus ao vivo',
         debugShowCheckedModeBanner: false,
         locale: DevicePreview.locale(context),
         builder: DevicePreview.appBuilder,
