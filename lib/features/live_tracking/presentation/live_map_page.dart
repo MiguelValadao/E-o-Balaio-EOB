@@ -153,9 +153,6 @@ class _LiveMapPageState extends State<LiveMapPage> {
                 ],
               ),
               // Code developed by Miguel Valadão. All rights reserved.
-              const SimpleAttributionWidget(
-                source: Text('© OpenStreetMap contributors'),
-              ),
             ],
           ),
           SafeArea(
