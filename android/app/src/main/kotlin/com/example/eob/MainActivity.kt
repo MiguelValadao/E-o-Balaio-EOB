@@ -1,4 +1,4 @@
-package com.example.mobilibus
+package com.example.eob
 
 import io.flutter.embedding.android.FlutterActivity
 

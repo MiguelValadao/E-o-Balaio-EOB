@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mobilibus/features/live_tracking/application/live_tracking_controller.dart';
-import 'package:mobilibus/features/live_tracking/data/mobilibus_repository.dart';
-import 'package:mobilibus/features/live_tracking/domain/bus_position.dart';
+import 'package:eob/features/live_tracking/application/live_tracking_controller.dart';
+import 'package:eob/features/live_tracking/data/eob_repository.dart';
+import 'package:eob/features/live_tracking/domain/bus_position.dart';
 
 void main() {
   test('loads vehicles and filters them by the selected line', () async {

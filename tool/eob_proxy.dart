@@ -14,13 +14,13 @@ Future<void> main(List<String> arguments) async {
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
   } on SocketException {
     stderr.writeln(
-      'Port $port is already in use. A Mobilibus proxy may already be running. '
+      'Port $port is already in use. An EOB proxy may already be running. '
       'Stop it first, or use --port with a different value.',
     );
     return;
   }
   final client = HttpClient();
-  stdout.writeln('Mobilibus proxy listening at http://localhost:$port');
+  stdout.writeln('EOB proxy listening at http://localhost:$port');
 
   await for (final request in server) {
     _addCorsHeaders(request.response);
@@ -46,7 +46,7 @@ Future<void> main(List<String> arguments) async {
       await request.response.close();
     } catch (_) {
       request.response.statusCode = HttpStatus.badGateway;
-      request.response.write('Could not reach the Mobilibus feed.');
+      request.response.write('Could not reach the upstream feed.');
       await request.response.close();
     }
   }

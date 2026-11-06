@@ -14,7 +14,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Usamos sua localização para mostrar os ônibus próximos e centralizar o mapa.</string>
 	<key>CFBundleDisplayName</key>
-	<string>Mobilibus</string>
+	<string>E o Balaio?</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -22,7 +22,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>mobilibus</string>
+	<string>EOB</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

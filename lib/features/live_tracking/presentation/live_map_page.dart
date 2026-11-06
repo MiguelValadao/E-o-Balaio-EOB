@@ -5,7 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/config/app_constants.dart';
 import '../application/live_tracking_controller.dart';
 import '../application/user_location_controller.dart';
-import '../data/mobilibus_repository.dart';
+import '../data/eob_repository.dart';
 import 'widgets/live_map_widgets.dart';
 
 class LiveMapPage extends StatefulWidget {
@@ -24,7 +24,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
   @override
   void initState() {
     super.initState();
-    _tracking = LiveTrackingController(repository: MobilibusRepository());
+    _tracking = LiveTrackingController(repository: EOBRepository());
     _tracking.addListener(_onTrackingChanged);
     _tracking.start();
     _userLocation = UserLocationController()..addListener(_onLocationChanged);
@@ -131,7 +131,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.mobilibus',
+                userAgentPackageName: 'com.example.eob',
               ),
               MarkerLayer(
                 markers: [

@@ -10,8 +10,8 @@ abstract interface class VehicleRepository {
   void dispose();
 }
 
-class MobilibusRepository implements VehicleRepository {
-  MobilibusRepository({http.Client? client})
+class EOBRepository implements VehicleRepository {
+  EOBRepository({http.Client? client})
       : _client = client ?? http.Client(),
         _ownsClient = client == null;
 

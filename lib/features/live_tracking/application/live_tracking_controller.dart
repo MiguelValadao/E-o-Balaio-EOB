@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/config/app_constants.dart';
-import '../data/mobilibus_repository.dart';
+import '../data/eob_repository.dart';
 import '../domain/bus_position.dart';
 
 class LiveTrackingController extends ChangeNotifier {

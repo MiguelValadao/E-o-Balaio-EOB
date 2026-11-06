@@ -6,7 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../domain/bus_position.dart';
 
 /// Reads only the GTFS-Realtime VehiclePosition fields consumed by the app.
-/// The Mobilibus endpoint returns Protocol Buffers rather than JSON.
+/// The upstream endpoint returns Protocol Buffers rather than JSON.
 class GtfsRealtimeDecoder {
   static List<BusPosition> decode(Uint8List input) {
     final result = <BusPosition>[];

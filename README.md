@@ -1,8 +1,8 @@
-# Mobilibus ao vivo
+# E o Balaio?
 
-Mobilibus ao vivo helps you follow the current positions of buses for a chosen
-line on an interactive map. Vehicle information is supplied by the Mobilibus
-real-time feed and is refreshed automatically.
+E o Balaio? helps you follow the current positions of buses for a chosen line
+on an interactive map. Vehicle information is supplied by a real-time feed and
+is refreshed automatically.
 
 ## What you can do
 
