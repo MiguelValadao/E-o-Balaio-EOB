@@ -46,6 +46,7 @@ class GtfsRealtimeDecoder {
       return null;
     }
     if (latitude.abs() > 90 || longitude.abs() > 180) return null;
+    final heading = pointFields.firstWhereOrNull((field) => field.number == 3)?.float32;
 
     final descriptorFields =
         descriptor == null ? const <_Field>[] : _fields(descriptor.bytes!);
@@ -54,6 +55,7 @@ class GtfsRealtimeDecoder {
       location: LatLng(latitude, longitude),
       destination: tripFields.firstWhereOrNull((field) => field.number == 1)?.text,
       label: descriptorFields.firstWhereOrNull((field) => field.number == 2)?.text,
+      heading: heading != null && heading >= 0 && heading < 360 ? heading : null,
     );
   }
 

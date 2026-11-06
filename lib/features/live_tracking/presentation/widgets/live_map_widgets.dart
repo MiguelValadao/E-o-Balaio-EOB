@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../domain/bus_position.dart';
@@ -314,24 +316,56 @@ class BusMarker extends StatelessWidget {
   final BusPosition vehicle;
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-        message:
-            'Linha ${vehicle.line}${vehicle.label == null ? '' : ' • ${vehicle.label}'}',
-        child: const DecoratedBox(
-          decoration: BoxDecoration(
-            color: Color(0xFF006F58),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Color(0x40001F18),
-                blurRadius: 8,
-                offset: Offset(0, 3),
+  Widget build(BuildContext context) {
+    final heading = vehicle.heading ?? 0;
+    return Tooltip(
+      message:
+          'Linha ${vehicle.line}${vehicle.label == null ? '' : ' • ${vehicle.label}'}',
+      child: Transform.rotate(
+        angle: heading * math.pi / 180,
+        child: CustomPaint(
+          painter: const _BusDropPainter(),
+          child: const SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: Icon(
+                Icons.directions_bus_rounded,
+                color: Colors.white,
+                size: 24,
               ),
-            ],
+            ),
           ),
-          child: Icon(Icons.directions_bus_rounded, color: Colors.white, size: 26),
         ),
-      );
+      ),
+    );
+  }
+}
+
+class _BusDropPainter extends CustomPainter {
+  const _BusDropPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(size.width / 2, 2)
+      ..cubicTo(7, 13, 6, 29, 15, 40)
+      ..cubicTo(20, 46, 28, 46, 33, 40)
+      ..cubicTo(42, 29, 41, 13, size.width / 2, 2)
+      ..close();
+    canvas.drawShadow(path, const Color(0x50001F18), 5, true);
+    canvas.drawPath(path, Paint()..color = const Color(0xFF006F58));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _BusDropPainter oldDelegate) => false;
 }
 
 class UserLocationMarker extends StatelessWidget {
