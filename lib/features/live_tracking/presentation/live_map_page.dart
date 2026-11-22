@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/app_constants.dart';
+import '../application/bus_stop_controller.dart';
 import '../application/live_tracking_controller.dart';
 import '../application/user_location_controller.dart';
+import '../data/bus_stop_repository.dart';
 import '../data/eob_repository.dart';
 import 'widgets/live_map_widgets.dart';
 
@@ -19,15 +23,19 @@ class _LiveMapPageState extends State<LiveMapPage> {
   final _mapController = MapController();
   late final LiveTrackingController _tracking;
   late final UserLocationController _userLocation;
+  late final BusStopController _stops;
   bool _isLinePanelCollapsed = false;
 
   @override
   void initState() {
     super.initState();
     _tracking = LiveTrackingController(repository: EOBRepository());
+    _stops = BusStopController(repository: const AssetBusStopRepository());
     _tracking.addListener(_onTrackingChanged);
-    _tracking.start();
+    _stops.addListener(_onStopsChanged);
     _userLocation = UserLocationController()..addListener(_onLocationChanged);
+    _tracking.start();
+    unawaited(_stops.load());
   }
 
   @override
@@ -35,17 +43,26 @@ class _LiveMapPageState extends State<LiveMapPage> {
     _tracking
       ..removeListener(_onTrackingChanged)
       ..dispose();
+    _stops
+      ..removeListener(_onStopsChanged)
+      ..dispose();
     _userLocation.removeListener(_onLocationChanged);
     _mapController.dispose();
     super.dispose();
   }
 
   void _onTrackingChanged() {
+    _stops.updateSelectedLine(_tracking.selectedLine);
     if (!mounted) return;
     setState(() {});
   }
 
   void _onLocationChanged() {
+    _stops.updateUserLocation(_userLocation.location);
+    if (mounted) setState(() {});
+  }
+
+  void _onStopsChanged() {
     if (mounted) setState(() {});
   }
 
@@ -93,17 +110,47 @@ class _LiveMapPageState extends State<LiveMapPage> {
   Widget build(BuildContext context) {
     final vehicles = _tracking.visibleVehicles;
     final userLocation = _userLocation.location;
+    final selectedLine = _tracking.selectedLine;
+    final recommendedStop = _stops.recommendedStop;
+    final stopMarkers = [
+      ..._stops.nearbyStops
+          .where((nearbyStop) => nearbyStop.stop != recommendedStop?.stop)
+          .map(
+            (nearbyStop) => Marker(
+              point: nearbyStop.stop.location,
+              width: 34,
+              height: 34,
+              child: BusStopMarker(
+                stop: nearbyStop.stop,
+                isSelectedLineStop: nearbyStop.stop.servesLine(selectedLine),
+              ),
+            ),
+          ),
+      if (recommendedStop != null)
+        Marker(
+          point: recommendedStop.stop.location,
+          width: 48,
+          height: 48,
+          child: BusStopMarker(
+            stop: recommendedStop.stop,
+            isSelectedLineStop: true,
+            isRecommended: true,
+            selectedLine: selectedLine,
+            distanceMeters: recommendedStop.distanceMeters,
+          ),
+        ),
+    ];
     final nearbyDistances = userLocation == null
         ? const <double>[]
         : _tracking.vehicles
-            .map(
-              (vehicle) => const Distance().as(
-                LengthUnit.Meter,
-                userLocation,
-                vehicle.location,
-              ),
-            )
-            .toList();
+              .map(
+                (vehicle) => const Distance().as(
+                  LengthUnit.Meter,
+                  userLocation,
+                  vehicle.location,
+                ),
+              )
+              .toList();
     final nearbyCount = userLocation == null
         ? null
         : nearbyDistances.where((distance) => distance <= 1500).length;
@@ -135,6 +182,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
               ),
               MarkerLayer(
                 markers: [
+                  ...stopMarkers,
                   ...vehicles.map(
                     (vehicle) => Marker(
                       point: vehicle.location,
@@ -195,7 +243,9 @@ class _LiveMapPageState extends State<LiveMapPage> {
               child: AnimatedSlide(
                 duration: animationDuration,
                 curve: Curves.easeInOutCubicEmphasized,
-                offset: _isLinePanelCollapsed ? const Offset(0, 1.15) : Offset.zero,
+                offset: _isLinePanelCollapsed
+                    ? const Offset(0, 1.15)
+                    : Offset.zero,
                 child: AnimatedOpacity(
                   duration: animationDuration,
                   curve: Curves.easeOut,
@@ -210,9 +260,17 @@ class _LiveMapPageState extends State<LiveMapPage> {
                         lineQuery: _tracking.lineQuery,
                         vehicles: vehicles,
                         errorMessage: _tracking.errorMessage,
-                        locationMessage: _userLocation.errorMessage,
+                        locationMessage:
+                            _userLocation.errorMessage ?? _stops.errorMessage,
                         nearbyCount: nearbyCount,
                         nearestDistanceMeters: nearestDistance,
+                        nearbyStopCount: userLocation == null
+                            ? null
+                            : _stops.nearbyStops.length,
+                        nearestStopDistanceMeters:
+                            _stops.nearestStop?.distanceMeters,
+                        recommendedStopDistanceMeters:
+                            recommendedStop?.distanceMeters,
                         onLineSelected: _selectLine,
                         onLineQueryChanged: _tracking.updateLineQuery,
                         onLineSubmitted: _submitLineSearch,
@@ -241,7 +299,9 @@ class _LiveMapPageState extends State<LiveMapPage> {
                         key: const ValueKey('open-line-search'),
                         onPressed: () => _setLinePanelCollapsed(false),
                       )
-                    : const SizedBox.shrink(key: ValueKey('hidden-line-search')),
+                    : const SizedBox.shrink(
+                        key: ValueKey('hidden-line-search'),
+                      ),
               ),
             ),
           ),

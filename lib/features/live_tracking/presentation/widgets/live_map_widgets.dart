@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../domain/bus_stop.dart';
 import '../../domain/bus_position.dart';
 
 class MapHeader extends StatelessWidget {
@@ -44,7 +45,10 @@ class MapHeader extends StatelessWidget {
                       children: [
                         const Text(
                           'E o Balaio?',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                         Text(
                           '$count veículos • $stamp',
@@ -94,6 +98,9 @@ class LinePanel extends StatelessWidget {
     required this.locationMessage,
     required this.nearbyCount,
     required this.nearestDistanceMeters,
+    required this.nearbyStopCount,
+    required this.nearestStopDistanceMeters,
+    required this.recommendedStopDistanceMeters,
     required this.onLineSelected,
     required this.onLineQueryChanged,
     required this.onLineSubmitted,
@@ -108,6 +115,9 @@ class LinePanel extends StatelessWidget {
   final String? locationMessage;
   final int? nearbyCount;
   final double? nearestDistanceMeters;
+  final int? nearbyStopCount;
+  final double? nearestStopDistanceMeters;
+  final double? recommendedStopDistanceMeters;
   final ValueChanged<String> onLineSelected;
   final ValueChanged<String> onLineQueryChanged;
   final VoidCallback onLineSubmitted;
@@ -203,16 +213,83 @@ class LinePanel extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.near_me_rounded, size: 15, color: Color(0xFF006F58)),
+                const Icon(
+                  Icons.near_me_rounded,
+                  size: 15,
+                  color: Color(0xFF006F58),
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     '$nearbyCount ônibus a até 1,5 km${nearestDistanceMeters == null ? '' : ' • mais próximo a ${_distanceLabel(nearestDistanceMeters!)}'}',
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF3D5651)),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF3D5651),
+                    ),
                   ),
                 ),
               ],
+            ),
+          ],
+          if (nearestStopDistanceMeters != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 15,
+                  color: Color(0xFF55716A),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${nearbyStopCount ?? 0} pontos próximos • mais próximo a ${_distanceLabel(nearestStopDistanceMeters!)}',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF3D5651),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (recommendedStopDistanceMeters != null &&
+              selectedLine != null) ...[
+            const SizedBox(height: 10),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3CC),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 17,
+                      color: Color(0xFF9A6500),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        'Ponto recomendado para a linha $selectedLine • ${_distanceLabel(recommendedStopDistanceMeters!)}',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF6F4A00),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
           if (errorMessage != null) ...[
@@ -270,6 +347,7 @@ class _LineSearchFieldState extends State<LineSearchField> {
       );
     }
   }
+
   // Code developed by Miguel Valadão. All rights reserved.
   @override
   void dispose() {
@@ -279,35 +357,35 @@ class _LineSearchFieldState extends State<LineSearchField> {
 
   @override
   Widget build(BuildContext context) => TextField(
-        controller: _controller,
-        onChanged: (value) {
-          setState(() {});
-          widget.onChanged(value);
-        },
-        onSubmitted: (_) => widget.onSubmitted(),
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: 'Digite a linha, ex.: 8551',
-          prefixIcon: const Icon(Icons.search_rounded),
-          suffixIcon: _controller.text.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: 'Limpar busca',
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () {
-                    _controller.clear();
-                    setState(() {});
-                    widget.onChanged('');
-                  },
-                ),
-          filled: true,
-          fillColor: const Color(0xFFF0F5F2),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      );
+    controller: _controller,
+    onChanged: (value) {
+      setState(() {});
+      widget.onChanged(value);
+    },
+    onSubmitted: (_) => widget.onSubmitted(),
+    textInputAction: TextInputAction.search,
+    decoration: InputDecoration(
+      hintText: 'Digite a linha, ex.: 8551',
+      prefixIcon: const Icon(Icons.search_rounded),
+      suffixIcon: _controller.text.isEmpty
+          ? null
+          : IconButton(
+              tooltip: 'Limpar busca',
+              icon: const Icon(Icons.close_rounded),
+              onPressed: () {
+                _controller.clear();
+                setState(() {});
+                widget.onChanged('');
+              },
+            ),
+      filled: true,
+      fillColor: const Color(0xFFF0F5F2),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+    ),
+  );
 }
 
 class BusMarker extends StatelessWidget {
@@ -373,16 +451,84 @@ class UserLocationMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const DecoratedBox(
-        decoration: BoxDecoration(
-          color: Color(0xFF1976D2),
-          shape: BoxShape.circle,
-          border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 4)),
-          boxShadow: [
-            BoxShadow(color: Color(0x55000000), blurRadius: 8, offset: Offset(0, 2)),
-          ],
+    decoration: BoxDecoration(
+      color: Color(0xFF1976D2),
+      shape: BoxShape.circle,
+      border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 4)),
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x55000000),
+          blurRadius: 8,
+          offset: Offset(0, 2),
         ),
-        child: Icon(Icons.person_pin_circle_rounded, color: Colors.white, size: 23),
-      );
+      ],
+    ),
+    child: Icon(Icons.person_pin_circle_rounded, color: Colors.white, size: 23),
+  );
+}
+
+class BusStopMarker extends StatelessWidget {
+  const BusStopMarker({
+    super.key,
+    required this.stop,
+    required this.isSelectedLineStop,
+    this.isRecommended = false,
+    this.selectedLine,
+    this.distanceMeters,
+  });
+
+  final BusStop stop;
+  final bool isSelectedLineStop;
+  final bool isRecommended;
+  final String? selectedLine;
+  final double? distanceMeters;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isRecommended
+        ? const Color(0xFFFFB300)
+        : isSelectedLineStop
+        ? const Color(0xFF008D6B)
+        : const Color(0xFF71817C);
+    final size = isRecommended ? 44.0 : 30.0;
+    final lineDescription = selectedLine == null
+        ? '${stop.lines.length} linha${stop.lines.length == 1 ? '' : 's'}'
+        : isRecommended
+        ? 'Ponto recomendado para a linha $selectedLine'
+        : isSelectedLineStop
+        ? 'Atende a linha $selectedLine'
+        : '${stop.lines.length} linha${stop.lines.length == 1 ? '' : 's'}';
+    return Tooltip(
+      message:
+          '$lineDescription${distanceMeters == null ? '' : ' • ${_distanceLabel(distanceMeters!)}'}',
+      child: Center(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white,
+              width: isRecommended ? 3 : 2,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33001F18),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            isRecommended ? Icons.star_rounded : Icons.directions_bus_rounded,
+            size: isRecommended ? 23 : 17,
+            color: isRecommended ? const Color(0xFF533800) : Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class LocationButton extends StatelessWidget {
@@ -399,24 +545,28 @@ class LocationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: Colors.white,
-        elevation: 5,
-        shape: const CircleBorder(),
-        child: IconButton(
-          tooltip: hasLocation ? 'Centralizar na minha localização' : 'Minha localização',
-          onPressed: onPressed,
-          icon: isLocating
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(
-                  hasLocation ? Icons.my_location_rounded : Icons.location_searching_rounded,
-                  color: const Color(0xFF006F58),
-                ),
-        ),
-      );
+    color: Colors.white,
+    elevation: 5,
+    shape: const CircleBorder(),
+    child: IconButton(
+      tooltip: hasLocation
+          ? 'Centralizar na minha localização'
+          : 'Minha localização',
+      onPressed: onPressed,
+      icon: isLocating
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(
+              hasLocation
+                  ? Icons.my_location_rounded
+                  : Icons.location_searching_rounded,
+              color: const Color(0xFF006F58),
+            ),
+    ),
+  );
 }
 
 class SearchLinesButton extends StatelessWidget {
@@ -426,59 +576,62 @@ class SearchLinesButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: const Color(0xFF004F40),
-        elevation: 6,
-        shape: const CircleBorder(),
-        child: IconButton(
-          tooltip: 'Abrir busca de linhas',
-          onPressed: onPressed,
-          icon: const Icon(Icons.search_rounded, color: Colors.white),
-        ),
-      );
+    color: const Color(0xFF004F40),
+    elevation: 6,
+    shape: const CircleBorder(),
+    child: IconButton(
+      tooltip: 'Abrir busca de linhas',
+      onPressed: onPressed,
+      icon: const Icon(Icons.search_rounded, color: Colors.white),
+    ),
+  );
 }
 
 class ConnectionErrorCard extends StatelessWidget {
-  const ConnectionErrorCard({super.key, required this.onRetry, required this.message});
+  const ConnectionErrorCard({
+    super.key,
+    required this.onRetry,
+    required this.message,
+  });
 
   final VoidCallback onRetry;
   final String message;
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Card(
-          margin: const EdgeInsets.all(30),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.cloud_off_rounded,
-                  size: 42,
-                  color: Color(0xFFAF3A35),
-                ),
-                const SizedBox(height: 12),
-                Text(message, textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                FilledButton(onPressed: onRetry, child: const Text('Tentar novamente')),
-              ],
+    child: Card(
+      margin: const EdgeInsets.all(30),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 42,
+              color: Color(0xFFAF3A35),
             ),
-          ),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onRetry,
+              child: const Text('Tentar novamente'),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 BoxDecoration cardDecoration(double radius) => BoxDecoration(
-      color: const Color(0xFFFCFEFD),
-      borderRadius: BorderRadius.circular(radius),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x27091E2C),
-          blurRadius: 20,
-          offset: Offset(0, 7),
-        ),
-      ],
-    );
+  color: const Color(0xFFFCFEFD),
+  borderRadius: BorderRadius.circular(radius),
+  boxShadow: const [
+    BoxShadow(color: Color(0x27091E2C), blurRadius: 20, offset: Offset(0, 7)),
+  ],
+);
 
 extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
