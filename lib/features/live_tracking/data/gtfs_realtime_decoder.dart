@@ -38,11 +38,11 @@ class GtfsRealtimeDecoder {
     if (trip == null || position == null) return null;
 
     final tripFields = _fields(trip.bytes!);
-    final line = tripFields.firstWhereOrNull((field) => field.number == 5)?.text;
+    final routeId = tripFields.firstWhereOrNull((field) => field.number == 5)?.text;
     final pointFields = _fields(position.bytes!);
     final latitude = pointFields.firstWhereOrNull((field) => field.number == 1)?.float32;
     final longitude = pointFields.firstWhereOrNull((field) => field.number == 2)?.float32;
-    if (line == null || line.isEmpty || latitude == null || longitude == null) {
+    if (routeId == null || routeId.isEmpty || latitude == null || longitude == null) {
       return null;
     }
     if (latitude.abs() > 90 || longitude.abs() > 180) return null;
@@ -51,12 +51,22 @@ class GtfsRealtimeDecoder {
     final descriptorFields =
         descriptor == null ? const <_Field>[] : _fields(descriptor.bytes!);
     return BusPosition(
-      line: line,
+      line: publicLineFromRouteId(routeId),
       location: LatLng(latitude, longitude),
       destination: tripFields.firstWhereOrNull((field) => field.number == 1)?.text,
       label: descriptorFields.firstWhereOrNull((field) => field.number == 2)?.text,
       heading: heading != null && heading >= 0 && heading < 360 ? heading : null,
     );
+  }
+
+  /// Converts Mobilibus' internal route identifier to the public line code.
+  ///
+  /// The live feed encodes routes as `<line><line><direction>`, for example
+  /// `10110101`. Only the first `101` is the line shown to riders.
+  static String publicLineFromRouteId(String routeId) {
+    final normalized = routeId.trim().toUpperCase();
+    final match = RegExp(r'^(.+)\1\d{2}$').firstMatch(normalized);
+    return match?.group(1) ?? normalized;
   }
 
   static List<_Field> _fields(Uint8List data) {
