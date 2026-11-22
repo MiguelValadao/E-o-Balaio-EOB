@@ -1,4 +1,4 @@
-import 'package:e_o_balaio/features/live_tracking/data/gtfs_realtime_decoder.dart';
+import 'package:eob/features/live_tracking/data/gtfs_realtime_decoder.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
