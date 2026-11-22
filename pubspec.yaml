@@ -66,6 +66,7 @@ flutter:
 
   assets:
     - assets/data/bus_stops.json
+    - assets/data/itineraries.json
 
 flutter_launcher_icons:
   image_path: assets/app_logo.png

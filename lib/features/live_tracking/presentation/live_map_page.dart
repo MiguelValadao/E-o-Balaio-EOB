@@ -5,11 +5,13 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/app_constants.dart';
+import '../application/arrival_estimate_controller.dart';
 import '../application/bus_stop_controller.dart';
 import '../application/live_tracking_controller.dart';
 import '../application/user_location_controller.dart';
 import '../data/bus_stop_repository.dart';
 import '../data/eob_repository.dart';
+import '../data/itinerary_repository.dart';
 import 'widgets/live_map_widgets.dart';
 
 class LiveMapPage extends StatefulWidget {
@@ -24,6 +26,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
   late final LiveTrackingController _tracking;
   late final UserLocationController _userLocation;
   late final BusStopController _stops;
+  late final ArrivalEstimateController _arrivals;
   bool _isLinePanelCollapsed = false;
 
   @override
@@ -31,11 +34,16 @@ class _LiveMapPageState extends State<LiveMapPage> {
     super.initState();
     _tracking = LiveTrackingController(repository: EOBRepository());
     _stops = BusStopController(repository: const AssetBusStopRepository());
+    _arrivals = ArrivalEstimateController(
+      repository: const AssetItineraryRepository(),
+    );
     _tracking.addListener(_onTrackingChanged);
     _stops.addListener(_onStopsChanged);
+    _arrivals.addListener(_onArrivalsChanged);
     _userLocation = UserLocationController()..addListener(_onLocationChanged);
     _tracking.start();
     unawaited(_stops.load());
+    unawaited(_arrivals.load());
   }
 
   @override
@@ -46,6 +54,9 @@ class _LiveMapPageState extends State<LiveMapPage> {
     _stops
       ..removeListener(_onStopsChanged)
       ..dispose();
+    _arrivals
+      ..removeListener(_onArrivalsChanged)
+      ..dispose();
     _userLocation.removeListener(_onLocationChanged);
     _mapController.dispose();
     super.dispose();
@@ -53,6 +64,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
 
   void _onTrackingChanged() {
     _stops.updateSelectedLine(_tracking.selectedLine);
+    _syncArrivalEstimate();
     if (!mounted) return;
     setState(() {});
   }
@@ -63,7 +75,20 @@ class _LiveMapPageState extends State<LiveMapPage> {
   }
 
   void _onStopsChanged() {
+    _syncArrivalEstimate();
     if (mounted) setState(() {});
+  }
+
+  void _onArrivalsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _syncArrivalEstimate() {
+    _arrivals.updateInputs(
+      selectedLine: _tracking.selectedLine,
+      vehicles: _tracking.visibleVehicles,
+      targetStop: _stops.recommendedStop,
+    );
   }
 
   Future<void> _locateUser() async {
@@ -112,6 +137,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
     final userLocation = _userLocation.location;
     final selectedLine = _tracking.selectedLine;
     final recommendedStop = _stops.recommendedStop;
+    final arrivalEstimate = _arrivals.estimate;
     final stopMarkers = [
       ..._stops.selectedLineStops
           .where((stop) => stop != recommendedStop?.stop)
@@ -257,7 +283,9 @@ class _LiveMapPageState extends State<LiveMapPage> {
                         vehicles: vehicles,
                         errorMessage: _tracking.errorMessage,
                         locationMessage:
-                            _userLocation.errorMessage ?? _stops.errorMessage,
+                            _userLocation.errorMessage ??
+                            _stops.errorMessage ??
+                            _arrivals.errorMessage,
                         nearbyCount: nearbyCount,
                         nearestDistanceMeters: nearestDistance,
                         lineStopCount: selectedLine == null
@@ -265,6 +293,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
                             : _stops.selectedLineStops.length,
                         recommendedStopDistanceMeters:
                             recommendedStop?.distanceMeters,
+                        arrivalEstimate: arrivalEstimate,
                         onLineSelected: _selectLine,
                         onLineQueryChanged: _tracking.updateLineQuery,
                         onLineSubmitted: _submitLineSearch,

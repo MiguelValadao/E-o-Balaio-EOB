@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../application/arrival_estimate_controller.dart';
 import '../../domain/bus_stop.dart';
 import '../../domain/bus_position.dart';
 
@@ -100,6 +101,7 @@ class LinePanel extends StatelessWidget {
     required this.nearestDistanceMeters,
     required this.lineStopCount,
     required this.recommendedStopDistanceMeters,
+    required this.arrivalEstimate,
     required this.onLineSelected,
     required this.onLineQueryChanged,
     required this.onLineSubmitted,
@@ -116,6 +118,7 @@ class LinePanel extends StatelessWidget {
   final double? nearestDistanceMeters;
   final int? lineStopCount;
   final double? recommendedStopDistanceMeters;
+  final ArrivalEstimate? arrivalEstimate;
   final ValueChanged<String> onLineSelected;
   final ValueChanged<String> onLineQueryChanged;
   final VoidCallback onLineSubmitted;
@@ -282,6 +285,42 @@ class LinePanel extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF6F4A00),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (arrivalEstimate != null) ...[
+            const SizedBox(height: 8),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xFFDDF5EE),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.schedule_rounded,
+                      size: 17,
+                      color: Color(0xFF006F58),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        'Próximo ônibus em ~${arrivalEstimate!.estimatedMinutes} min • ${_distanceLabel(arrivalEstimate!.remainingMeters)} pela rota (15 km/h)',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF00513F),
                         ),
                       ),
                     ),
