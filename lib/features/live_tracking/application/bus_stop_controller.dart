@@ -18,6 +18,7 @@ class BusStopController extends ChangeNotifier {
 
   List<BusStop> _stops = const [];
   List<NearbyBusStop> _nearbyStops = const [];
+  List<BusStop> _selectedLineStops = const [];
   NearbyBusStop? _nearestStop;
   NearbyBusStop? _recommendedStop;
   LatLng? _userLocation;
@@ -26,6 +27,7 @@ class BusStopController extends ChangeNotifier {
   bool _isLoading = true;
 
   List<NearbyBusStop> get nearbyStops => List.unmodifiable(_nearbyStops);
+  List<BusStop> get selectedLineStops => List.unmodifiable(_selectedLineStops);
   NearbyBusStop? get nearestStop => _nearestStop;
   NearbyBusStop? get recommendedStop => _recommendedStop;
   String? get errorMessage => _errorMessage;
@@ -39,6 +41,7 @@ class BusStopController extends ChangeNotifier {
     } catch (_) {
       _stops = const [];
       _nearbyStops = const [];
+      _selectedLineStops = const [];
       _nearestStop = null;
       _recommendedStop = null;
       _errorMessage = 'Não foi possível carregar os pontos de ônibus.';
@@ -58,11 +61,13 @@ class BusStopController extends ChangeNotifier {
   void updateSelectedLine(String? line) {
     if (_selectedLine == line) return;
     _selectedLine = line;
+    _recalculateSelectedLineStops();
     _recalculateRecommendation();
     notifyListeners();
   }
 
   void _recalculateStops() {
+    _recalculateSelectedLineStops();
     final userLocation = _userLocation;
     if (userLocation == null || _stops.isEmpty) {
       _nearbyStops = const [];
@@ -94,6 +99,15 @@ class BusStopController extends ChangeNotifier {
         .take(maximumNearbyStops)
         .toList(growable: false);
     _recalculateRecommendation(from: sortedStops);
+  }
+
+  void _recalculateSelectedLineStops() {
+    final selectedLine = _selectedLine;
+    _selectedLineStops = selectedLine == null
+        ? const []
+        : _stops
+              .where((stop) => stop.servesLine(selectedLine))
+              .toList(growable: false);
   }
 
   void _recalculateRecommendation({List<NearbyBusStop>? from}) {

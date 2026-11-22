@@ -113,17 +113,14 @@ class _LiveMapPageState extends State<LiveMapPage> {
     final selectedLine = _tracking.selectedLine;
     final recommendedStop = _stops.recommendedStop;
     final stopMarkers = [
-      ..._stops.nearbyStops
-          .where((nearbyStop) => nearbyStop.stop != recommendedStop?.stop)
+      ..._stops.selectedLineStops
+          .where((stop) => stop != recommendedStop?.stop)
           .map(
-            (nearbyStop) => Marker(
-              point: nearbyStop.stop.location,
+            (stop) => Marker(
+              point: stop.location,
               width: 34,
               height: 34,
-              child: BusStopMarker(
-                stop: nearbyStop.stop,
-                isSelectedLineStop: nearbyStop.stop.servesLine(selectedLine),
-              ),
+              child: BusStopMarker(stop: stop, selectedLine: selectedLine),
             ),
           ),
       if (recommendedStop != null)
@@ -133,7 +130,6 @@ class _LiveMapPageState extends State<LiveMapPage> {
           height: 48,
           child: BusStopMarker(
             stop: recommendedStop.stop,
-            isSelectedLineStop: true,
             isRecommended: true,
             selectedLine: selectedLine,
             distanceMeters: recommendedStop.distanceMeters,
@@ -264,11 +260,9 @@ class _LiveMapPageState extends State<LiveMapPage> {
                             _userLocation.errorMessage ?? _stops.errorMessage,
                         nearbyCount: nearbyCount,
                         nearestDistanceMeters: nearestDistance,
-                        nearbyStopCount: userLocation == null
+                        lineStopCount: selectedLine == null
                             ? null
-                            : _stops.nearbyStops.length,
-                        nearestStopDistanceMeters:
-                            _stops.nearestStop?.distanceMeters,
+                            : _stops.selectedLineStops.length,
                         recommendedStopDistanceMeters:
                             recommendedStop?.distanceMeters,
                         onLineSelected: _selectLine,

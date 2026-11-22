@@ -98,8 +98,7 @@ class LinePanel extends StatelessWidget {
     required this.locationMessage,
     required this.nearbyCount,
     required this.nearestDistanceMeters,
-    required this.nearbyStopCount,
-    required this.nearestStopDistanceMeters,
+    required this.lineStopCount,
     required this.recommendedStopDistanceMeters,
     required this.onLineSelected,
     required this.onLineQueryChanged,
@@ -115,8 +114,7 @@ class LinePanel extends StatelessWidget {
   final String? locationMessage;
   final int? nearbyCount;
   final double? nearestDistanceMeters;
-  final int? nearbyStopCount;
-  final double? nearestStopDistanceMeters;
+  final int? lineStopCount;
   final double? recommendedStopDistanceMeters;
   final ValueChanged<String> onLineSelected;
   final ValueChanged<String> onLineQueryChanged;
@@ -232,19 +230,19 @@ class LinePanel extends StatelessWidget {
               ],
             ),
           ],
-          if (nearestStopDistanceMeters != null) ...[
+          if (lineStopCount != null && selectedLine != null) ...[
             const SizedBox(height: 8),
             Row(
               children: [
                 const Icon(
-                  Icons.location_on_outlined,
+                  Icons.directions_bus_rounded,
                   size: 15,
-                  color: Color(0xFF55716A),
+                  color: Color(0xFF008D6B),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    '${nearbyStopCount ?? 0} pontos próximos • mais próximo a ${_distanceLabel(nearestStopDistanceMeters!)}',
+                    '$lineStopCount pontos da linha $selectedLine',
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12,
@@ -471,14 +469,12 @@ class BusStopMarker extends StatelessWidget {
   const BusStopMarker({
     super.key,
     required this.stop,
-    required this.isSelectedLineStop,
     this.isRecommended = false,
     this.selectedLine,
     this.distanceMeters,
   });
 
   final BusStop stop;
-  final bool isSelectedLineStop;
   final bool isRecommended;
   final String? selectedLine;
   final double? distanceMeters;
@@ -487,17 +483,13 @@ class BusStopMarker extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isRecommended
         ? const Color(0xFFFFB300)
-        : isSelectedLineStop
-        ? const Color(0xFF008D6B)
-        : const Color(0xFF71817C);
+        : const Color(0xFF008D6B);
     final size = isRecommended ? 44.0 : 30.0;
     final lineDescription = selectedLine == null
         ? '${stop.lines.length} linha${stop.lines.length == 1 ? '' : 's'}'
         : isRecommended
         ? 'Ponto recomendado para a linha $selectedLine'
-        : isSelectedLineStop
-        ? 'Atende a linha $selectedLine'
-        : '${stop.lines.length} linha${stop.lines.length == 1 ? '' : 's'}';
+        : 'Atende a linha $selectedLine';
     return Tooltip(
       message:
           '$lineDescription${distanceMeters == null ? '' : ' • ${_distanceLabel(distanceMeters!)}'}',

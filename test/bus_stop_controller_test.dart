@@ -6,7 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 void main() {
   test(
-    'finds nearby stops and recommends the closest stop for the selected line',
+    'shows only selected-line stops and recommends the closest one',
     () async {
       final firstStop = BusStop(
         location: const LatLng(-19.9168, -43.9345),
@@ -33,10 +33,9 @@ void main() {
       controller.updateUserLocation(const LatLng(-19.9167, -43.9345));
       controller.updateSelectedLine('8551');
 
-      expect(
-        controller.nearbyStops.map((nearby) => nearby.stop),
-        containsAll([firstStop, recommendedStop]),
-      );
+      expect(controller.selectedLineStops, containsAll([recommendedStop]));
+      expect(controller.selectedLineStops, hasLength(2));
+      expect(controller.selectedLineStops, isNot(contains(firstStop)));
       expect(controller.nearestStop?.stop, firstStop);
       expect(controller.recommendedStop?.stop, recommendedStop);
     },
