@@ -8,10 +8,13 @@ import '../../../core/config/app_constants.dart';
 import '../application/arrival_estimate_controller.dart';
 import '../application/bus_stop_controller.dart';
 import '../application/live_tracking_controller.dart';
+import '../application/trip_planner_controller.dart';
 import '../application/user_location_controller.dart';
 import '../data/bus_stop_repository.dart';
+import '../data/destination_search_repository.dart';
 import '../data/eob_repository.dart';
 import '../data/itinerary_repository.dart';
+import '../domain/trip_recommendation.dart';
 import 'widgets/live_map_widgets.dart';
 
 class LiveMapPage extends StatefulWidget {
@@ -27,6 +30,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
   late final UserLocationController _userLocation;
   late final BusStopController _stops;
   late final ArrivalEstimateController _arrivals;
+  late final TripPlannerController _tripPlanner;
   bool _isLinePanelCollapsed = false;
 
   @override
@@ -37,13 +41,20 @@ class _LiveMapPageState extends State<LiveMapPage> {
     _arrivals = ArrivalEstimateController(
       repository: const AssetItineraryRepository(),
     );
+    _tripPlanner = TripPlannerController(
+      destinationRepository: NominatimDestinationSearchRepository(),
+      stopRepository: const AssetBusStopRepository(),
+      itineraryRepository: const AssetItineraryRepository(),
+    );
     _tracking.addListener(_onTrackingChanged);
     _stops.addListener(_onStopsChanged);
     _arrivals.addListener(_onArrivalsChanged);
+    _tripPlanner.addListener(_onTripPlanChanged);
     _userLocation = UserLocationController()..addListener(_onLocationChanged);
     _tracking.start();
     unawaited(_stops.load());
     unawaited(_arrivals.load());
+    unawaited(_tripPlanner.load());
   }
 
   @override
@@ -56,6 +67,9 @@ class _LiveMapPageState extends State<LiveMapPage> {
       ..dispose();
     _arrivals
       ..removeListener(_onArrivalsChanged)
+      ..dispose();
+    _tripPlanner
+      ..removeListener(_onTripPlanChanged)
       ..dispose();
     _userLocation.removeListener(_onLocationChanged);
     _mapController.dispose();
@@ -71,6 +85,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
 
   void _onLocationChanged() {
     _stops.updateUserLocation(_userLocation.location);
+    _tripPlanner.updateOrigin(_userLocation.location);
     if (mounted) setState(() {});
   }
 
@@ -83,11 +98,22 @@ class _LiveMapPageState extends State<LiveMapPage> {
     if (mounted) setState(() {});
   }
 
+  void _onTripPlanChanged() {
+    final recommendation = _tripPlanner.bestRecommendation;
+    if (recommendation != null &&
+        recommendation.line != _tracking.selectedLine) {
+      _tracking.selectLine(recommendation.line, allowUnavailable: true);
+    }
+    _syncArrivalEstimate();
+    if (mounted) setState(() {});
+  }
+
   void _syncArrivalEstimate() {
     _arrivals.updateInputs(
       selectedLine: _tracking.selectedLine,
       vehicles: _tracking.visibleVehicles,
-      targetStop: _stops.recommendedStop,
+      targetStop: _tripPlanner.bestRecommendation?.boardingStop ??
+          _stops.recommendedStop,
     );
   }
 
@@ -131,12 +157,39 @@ class _LiveMapPageState extends State<LiveMapPage> {
     setState(() => _isLinePanelCollapsed = collapsed);
   }
 
+  Future<void> _searchDestination(String query) async {
+    await _tripPlanner.search(query);
+    final recommendation = _tripPlanner.bestRecommendation;
+    if (recommendation == null || !mounted) return;
+    _focusTripRecommendation(recommendation);
+  }
+
+  void _focusTripRecommendation(TripRecommendation recommendation) {
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds.fromPoints([
+          if (_userLocation.location != null) _userLocation.location!,
+          recommendation.boardingStop.stop.location,
+          recommendation.destination.location,
+        ]),
+        padding: const EdgeInsets.fromLTRB(48, 190, 48, 280),
+        maxZoom: 15,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vehicles = _tracking.visibleVehicles;
     final userLocation = _userLocation.location;
     final selectedLine = _tracking.selectedLine;
-    final recommendedStop = _stops.recommendedStop;
+    final tripRecommendation = _tripPlanner.bestRecommendation;
+    final lineOptions = {
+      ..._tracking.filteredLines,
+      if (tripRecommendation != null) tripRecommendation.line,
+    }.toList()..sort();
+    final recommendedStop =
+        tripRecommendation?.boardingStop ?? _stops.recommendedStop;
     final arrivalEstimate = _arrivals.estimate;
     final stopMarkers = [
       ..._stops.selectedLineStops
@@ -220,6 +273,13 @@ class _LiveMapPageState extends State<LiveMapPage> {
                       height: 42,
                       child: const UserLocationMarker(),
                     ),
+                  if (_tripPlanner.destination != null)
+                    Marker(
+                      point: _tripPlanner.destination!.location,
+                      width: 46,
+                      height: 46,
+                      child: const DestinationMarker(),
+                    ),
                 ],
               ),
               // Code developed by Miguel Valadão. All rights reserved.
@@ -235,6 +295,29 @@ class _LiveMapPageState extends State<LiveMapPage> {
                 onRefresh: _tracking.isLoading
                     ? null
                     : () => _tracking.refresh(),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 88,
+            left: 16,
+            right: 16,
+            child: SafeArea(
+              bottom: false,
+              child: TripPlannerPanel(
+                isSearching: _tripPlanner.isSearching,
+                destination: _tripPlanner.destination,
+                destinationMatches: _tripPlanner.destinationMatches,
+                recommendation: tripRecommendation,
+                errorMessage: _tripPlanner.errorMessage,
+                onSearch: _searchDestination,
+                onDestinationSelected: (destination) {
+                  _tripPlanner.selectDestination(destination);
+                  final recommendation = _tripPlanner.bestRecommendation;
+                  if (recommendation != null) {
+                    _focusTripRecommendation(recommendation);
+                  }
+                },
               ),
             ),
           ),
@@ -277,7 +360,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
                     child: SafeArea(
                       top: false,
                       child: LinePanel(
-                        lines: _tracking.filteredLines,
+                        lines: lineOptions,
                         selectedLine: _tracking.selectedLine,
                         lineQuery: _tracking.lineQuery,
                         vehicles: vehicles,
@@ -294,6 +377,7 @@ class _LiveMapPageState extends State<LiveMapPage> {
                         recommendedStopDistanceMeters:
                             recommendedStop?.distanceMeters,
                         arrivalEstimate: arrivalEstimate,
+                        tripRecommendation: tripRecommendation,
                         onLineSelected: _selectLine,
                         onLineQueryChanged: _tracking.updateLineQuery,
                         onLineSubmitted: _submitLineSearch,

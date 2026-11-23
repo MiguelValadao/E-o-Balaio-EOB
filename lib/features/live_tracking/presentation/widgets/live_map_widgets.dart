@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../application/arrival_estimate_controller.dart';
 import '../../domain/bus_stop.dart';
 import '../../domain/bus_position.dart';
+import '../../domain/destination.dart';
+import '../../domain/trip_recommendation.dart';
 
 class MapHeader extends StatelessWidget {
   const MapHeader({
@@ -102,6 +104,7 @@ class LinePanel extends StatelessWidget {
     required this.lineStopCount,
     required this.recommendedStopDistanceMeters,
     required this.arrivalEstimate,
+    required this.tripRecommendation,
     required this.onLineSelected,
     required this.onLineQueryChanged,
     required this.onLineSubmitted,
@@ -119,6 +122,7 @@ class LinePanel extends StatelessWidget {
   final int? lineStopCount;
   final double? recommendedStopDistanceMeters;
   final ArrivalEstimate? arrivalEstimate;
+  final TripRecommendation? tripRecommendation;
   final ValueChanged<String> onLineSelected;
   final ValueChanged<String> onLineQueryChanged;
   final VoidCallback onLineSubmitted;
@@ -293,6 +297,13 @@ class LinePanel extends StatelessWidget {
               ),
             ),
           ],
+          if (tripRecommendation != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Desça a ${_distanceLabel(tripRecommendation!.walkFromAlightingMeters)} do destino.',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF3D5651)),
+            ),
+          ],
           if (arrivalEstimate != null) ...[
             const SizedBox(height: 8),
             DecoratedBox(
@@ -346,6 +357,153 @@ class LinePanel extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class TripPlannerPanel extends StatefulWidget {
+  const TripPlannerPanel({
+    super.key,
+    required this.isSearching,
+    required this.destination,
+    required this.destinationMatches,
+    required this.recommendation,
+    required this.errorMessage,
+    required this.onSearch,
+    required this.onDestinationSelected,
+  });
+
+  final bool isSearching;
+  final Destination? destination;
+  final List<Destination> destinationMatches;
+  final TripRecommendation? recommendation;
+  final String? errorMessage;
+  final ValueChanged<String> onSearch;
+  final ValueChanged<Destination> onDestinationSelected;
+
+  @override
+  State<TripPlannerPanel> createState() => _TripPlannerPanelState();
+}
+
+class _TripPlannerPanelState extends State<TripPlannerPanel> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: cardDecoration(18),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _controller,
+            textInputAction: TextInputAction.search,
+            onSubmitted: widget.onSearch,
+            decoration: InputDecoration(
+              hintText: 'Para onde você vai?',
+              prefixIcon: const Icon(Icons.place_outlined),
+              isDense: true,
+              filled: true,
+              fillColor: const Color(0xFFF0F5F2),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              suffixIcon: widget.isSearching
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : IconButton(
+                      tooltip: 'Buscar destino',
+                      icon: const Icon(Icons.arrow_forward_rounded),
+                      onPressed: () => widget.onSearch(_controller.text),
+                    ),
+            ),
+          ),
+          if (widget.destinationMatches.length > 1) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 30,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: widget.destinationMatches.length - 1,
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                itemBuilder: (_, index) {
+                  final destination = widget.destinationMatches[index + 1];
+                  return ActionChip(
+                    avatar: const Icon(Icons.location_on_outlined, size: 15),
+                    label: Text(
+                      _shortAddress(destination.label),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onPressed: () => widget.onDestinationSelected(destination),
+                  );
+                },
+              ),
+            ),
+          ],
+          if (widget.recommendation != null) ...[
+            const SizedBox(height: 9),
+            Row(
+              children: [
+                const Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 17,
+                  color: Color(0xFF9A6500),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    'Melhor opção: linha ${widget.recommendation!.line} • embarque a ${_distanceLabel(widget.recommendation!.walkToBoardingMeters)}',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF6F4A00),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              'O ponto marcado está no sentido do destino.',
+              style: TextStyle(fontSize: 11, color: Color(0xFF3D5651)),
+            ),
+          ],
+          if (widget.errorMessage != null) ...[
+            const SizedBox(height: 7),
+            Text(
+              widget.errorMessage!,
+              style: const TextStyle(fontSize: 12, color: Color(0xFFAF3A35)),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+
+  String _shortAddress(String label) {
+    final comma = label.indexOf(',');
+    return comma == -1 ? label : label.substring(0, comma);
   }
 }
 
@@ -501,6 +659,30 @@ class UserLocationMarker extends StatelessWidget {
       ],
     ),
     child: Icon(Icons.person_pin_circle_rounded, color: Colors.white, size: 23),
+  );
+}
+
+class DestinationMarker extends StatelessWidget {
+  const DestinationMarker({super.key});
+
+  @override
+  Widget build(BuildContext context) => const Tooltip(
+    message: 'Destino',
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: Color(0xFFD64B3C),
+        shape: BoxShape.circle,
+        border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 3)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x55000000),
+            blurRadius: 7,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Icon(Icons.flag_rounded, color: Colors.white, size: 23),
+    ),
   );
 }
 

@@ -58,7 +58,7 @@ class LiveTrackingController extends ChangeNotifier {
 
     try {
       _vehicles = await _repository.fetchPositions();
-      if (_selectedLine == null || !lines.contains(_selectedLine)) {
+      if (_selectedLine == null && lines.isNotEmpty) {
         _selectedLine = lines.first;
       }
       _updatedAt = DateTime.now();
@@ -72,8 +72,10 @@ class LiveTrackingController extends ChangeNotifier {
     }
   }
 
-  void selectLine(String line) {
-    if (!lines.contains(line) || line == _selectedLine) return;
+  void selectLine(String line, {bool allowUnavailable = false}) {
+    if ((!allowUnavailable && !lines.contains(line)) || line == _selectedLine) {
+      return;
+    }
     _selectedLine = line;
     notifyListeners();
   }
