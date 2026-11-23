@@ -49,6 +49,44 @@ void main() {
       lessThan(recommendation.alightingStop.stop.location.latitude),
     );
   });
+
+  test('recalculates the trip when the rider chooses another address match', () async {
+    const routeDestination = Destination(
+      label: 'BH Shopping, Belvedere',
+      location: LatLng(0.030, 0),
+    );
+    final controller = TripPlannerController(
+      destinationRepository: const _FakeDestinationRepository([
+        Destination(label: 'Another BH Shopping', location: LatLng(1, 1)),
+        routeDestination,
+      ]),
+      stopRepository: _FakeBusStopRepository([
+        BusStop(location: const LatLng(0.008, 0), lines: const {'100'}),
+        BusStop(location: const LatLng(0.030, 0), lines: const {'100'}),
+      ]),
+      itineraryRepository: _FakeItineraryRepository([
+        Itinerary(
+          id: 1,
+          line: '100',
+          subline: null,
+          path: null,
+          declaredLengthMeters: null,
+          points: const [LatLng(0, 0), LatLng(0.04, 0)],
+        ),
+      ]),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.load();
+    controller.updateOrigin(const LatLng(0.006, 0));
+    await controller.search('BH Shopping');
+    expect(controller.bestRecommendation, isNull);
+
+    controller.selectDestination(routeDestination);
+
+    expect(controller.bestRecommendation?.line, '100');
+    expect(controller.errorMessage, isNull);
+  });
 }
 
 class _FakeDestinationRepository implements DestinationSearchRepository {

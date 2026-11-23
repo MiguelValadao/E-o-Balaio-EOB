@@ -438,25 +438,27 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
                     ),
             ),
           ),
-          if (widget.destinationMatches.length > 1) ...[
+          if (widget.destinationMatches.isNotEmpty) ...[
             const SizedBox(height: 8),
             SizedBox(
-              height: 30,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: widget.destinationMatches.length - 1,
-                separatorBuilder: (_, _) => const SizedBox(width: 6),
-                itemBuilder: (_, index) {
-                  final destination = widget.destinationMatches[index + 1];
-                  return ActionChip(
-                    avatar: const Icon(Icons.location_on_outlined, size: 15),
-                    label: Text(
-                      _shortAddress(destination.label),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onPressed: () => widget.onDestinationSelected(destination),
-                  );
-                },
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const ValueKey('destination-picker'),
+                onPressed: _pickDestination,
+                icon: const Icon(Icons.location_on_outlined, size: 18),
+                label: Text(
+                  _shortAddress(
+                    widget.destination?.label ??
+                        widget.destinationMatches.first.label,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: OutlinedButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  minimumSize: const Size.fromHeight(48),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
               ),
             ),
           ],
@@ -504,6 +506,40 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
   String _shortAddress(String label) {
     final comma = label.indexOf(',');
     return comma == -1 ? label : label.substring(0, comma);
+  }
+
+  Future<void> _pickDestination() async {
+    final destination = await showModalBottomSheet<Destination>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView.separated(
+          shrinkWrap: true,
+          itemCount: widget.destinationMatches.length,
+          separatorBuilder: (_, _) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final candidate = widget.destinationMatches[index];
+            final isSelected = candidate == widget.destination;
+            return ListTile(
+              leading: Icon(
+                isSelected
+                    ? Icons.location_on_rounded
+                    : Icons.location_on_outlined,
+              ),
+              title: Text(_shortAddress(candidate.label)),
+              subtitle: Text(
+                candidate.label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              selected: isSelected,
+              onTap: () => Navigator.pop(context, candidate),
+            );
+          },
+        ),
+      ),
+    );
+    if (destination != null) widget.onDestinationSelected(destination);
   }
 }
 
