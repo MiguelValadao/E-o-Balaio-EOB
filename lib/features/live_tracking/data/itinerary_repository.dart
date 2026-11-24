@@ -10,14 +10,18 @@ abstract interface class ItineraryRepository {
 }
 
 class AssetItineraryRepository implements ItineraryRepository {
-  const AssetItineraryRepository({
+  AssetItineraryRepository({
     this.assetPath = 'assets/data/itineraries.json',
   });
 
   final String assetPath;
+  Future<List<Itinerary>>? _itinerariesFuture;
 
   @override
-  Future<List<Itinerary>> fetchItineraries() async {
+  Future<List<Itinerary>> fetchItineraries() =>
+      _itinerariesFuture ??= _loadItineraries();
+
+  Future<List<Itinerary>> _loadItineraries() async {
     final raw = await rootBundle.loadString(assetPath);
     final root = jsonDecode(raw);
     if (root is! Map<String, dynamic> ||

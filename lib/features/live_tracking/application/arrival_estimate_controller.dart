@@ -1,12 +1,10 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../data/itinerary_repository.dart';
 import '../domain/bus_position.dart';
 import '../domain/bus_stop.dart';
 import '../domain/itinerary.dart';
+import '../domain/route_projection.dart';
 
 class ArrivalEstimate {
   const ArrivalEstimate({
@@ -21,7 +19,6 @@ class ArrivalEstimate {
   final double remainingMeters;
   final int estimatedMinutes;
 }
-
 /// Estimates the time to the recommended boarding stop using an intentionally
 /// simple fixed average speed. It is an estimate, not a scheduled prediction.
 class ArrivalEstimateController extends ChangeNotifier {
@@ -89,14 +86,19 @@ class ArrivalEstimateController extends ChangeNotifier {
       return;
     }
 
+    final stopProjections = {
+      for (final itinerary in lineItineraries)
+        itinerary: RouteProjector.project(targetStop.stop.location, itinerary.points),
+    };
+
     ArrivalEstimate? fastest;
     for (final vehicle in _vehicles.where((vehicle) => vehicle.line == line)) {
       for (final itinerary in lineItineraries) {
-        final busProjection = _project(vehicle.location, itinerary.points);
-        final stopProjection = _project(
-          targetStop.stop.location,
+        final busProjection = RouteProjector.project(
+          vehicle.location,
           itinerary.points,
         );
+        final stopProjection = stopProjections[itinerary];
         if (busProjection == null ||
             stopProjection == null ||
             busProjection.distanceFromRouteMeters > _maximumRouteOffsetMeters ||
@@ -130,92 +132,8 @@ class ArrivalEstimateController extends ChangeNotifier {
     _estimate = fastest;
   }
 
-  _RouteProjection? _project(LatLng point, List<LatLng> route) {
-    if (route.length < 2) return null;
-    var distanceBeforeSegment = 0.0;
-    _RouteProjection? closest;
-    for (var index = 0; index < route.length - 1; index++) {
-      final start = route[index];
-      final end = route[index + 1];
-      final projection = _projectOntoSegment(point, start, end);
-      if (projection == null) continue;
-      final candidate = _RouteProjection(
-        distanceFromRouteMeters: projection.distanceMeters,
-        distanceAlongRouteMeters:
-            distanceBeforeSegment +
-            projection.segmentFraction * projection.lengthMeters,
-        bearingDegrees: projection.bearingDegrees,
-      );
-      if (closest == null ||
-          candidate.distanceFromRouteMeters < closest.distanceFromRouteMeters) {
-        closest = candidate;
-      }
-      distanceBeforeSegment += projection.lengthMeters;
-    }
-    return closest;
-  }
-
-  _SegmentProjection? _projectOntoSegment(
-    LatLng point,
-    LatLng start,
-    LatLng end,
-  ) {
-    const metersPerLatitudeDegree = 111320.0;
-    final referenceLatitudeRadians =
-        ((start.latitude + end.latitude + point.latitude) / 3) * math.pi / 180;
-    final metersPerLongitudeDegree =
-        metersPerLatitudeDegree * math.cos(referenceLatitudeRadians);
-    final endX = (end.longitude - start.longitude) * metersPerLongitudeDegree;
-    final endY = (end.latitude - start.latitude) * metersPerLatitudeDegree;
-    final pointX =
-        (point.longitude - start.longitude) * metersPerLongitudeDegree;
-    final pointY = (point.latitude - start.latitude) * metersPerLatitudeDegree;
-    final lengthSquared = endX * endX + endY * endY;
-    if (lengthSquared == 0) return null;
-    final fraction = ((pointX * endX + pointY * endY) / lengthSquared)
-        .clamp(0.0, 1.0)
-        .toDouble();
-    final closestX = endX * fraction;
-    final closestY = endY * fraction;
-    final lengthMeters = math.sqrt(lengthSquared);
-    return _SegmentProjection(
-      distanceMeters: math.sqrt(
-        math.pow(pointX - closestX, 2) + math.pow(pointY - closestY, 2),
-      ),
-      segmentFraction: fraction,
-      lengthMeters: lengthMeters,
-      bearingDegrees: (math.atan2(endX, endY) * 180 / math.pi + 360) % 360,
-    );
-  }
-
   double _bearingDifference(double first, double second) {
     final difference = (first - second).abs() % 360;
     return difference > 180 ? 360 - difference : difference;
   }
-}
-
-class _RouteProjection {
-  const _RouteProjection({
-    required this.distanceFromRouteMeters,
-    required this.distanceAlongRouteMeters,
-    required this.bearingDegrees,
-  });
-
-  final double distanceFromRouteMeters;
-  final double distanceAlongRouteMeters;
-  final double bearingDegrees;
-}
-
-class _SegmentProjection {
-  const _SegmentProjection({
-    required this.distanceMeters,
-    required this.segmentFraction,
-    required this.lengthMeters,
-    required this.bearingDegrees,
-  });
-
-  final double distanceMeters;
-  final double segmentFraction;
-  final double lengthMeters;
-  final double bearingDegrees;
 }

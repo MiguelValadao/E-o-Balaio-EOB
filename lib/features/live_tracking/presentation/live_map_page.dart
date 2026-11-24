@@ -26,6 +26,7 @@ class LiveMapPage extends StatefulWidget {
 
 class _LiveMapPageState extends State<LiveMapPage> {
   final _mapController = MapController();
+  final _itineraryRepository = AssetItineraryRepository();
   late final LiveTrackingController _tracking;
   late final UserLocationController _userLocation;
   late final BusStopController _stops;
@@ -39,12 +40,12 @@ class _LiveMapPageState extends State<LiveMapPage> {
     _tracking = LiveTrackingController(repository: EOBRepository());
     _stops = BusStopController(repository: const AssetBusStopRepository());
     _arrivals = ArrivalEstimateController(
-      repository: const AssetItineraryRepository(),
+      repository: _itineraryRepository,
     );
     _tripPlanner = TripPlannerController(
       destinationRepository: NominatimDestinationSearchRepository(),
       stopRepository: const AssetBusStopRepository(),
-      itineraryRepository: const AssetItineraryRepository(),
+      itineraryRepository: _itineraryRepository,
     );
     _tracking.addListener(_onTrackingChanged);
     _stops.addListener(_onStopsChanged);

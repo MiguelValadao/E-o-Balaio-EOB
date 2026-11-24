@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -9,6 +7,7 @@ import '../data/itinerary_repository.dart';
 import '../domain/bus_stop.dart';
 import '../domain/destination.dart';
 import '../domain/itinerary.dart';
+import '../domain/route_projection.dart';
 import '../domain/trip_recommendation.dart';
 
 /// Finds direct trips from the user's position to an entered destination.
@@ -122,8 +121,11 @@ class TripPlannerController extends ChangeNotifier {
     }
     final candidatesByLine = <String, TripRecommendation>{};
     for (final itinerary in _itineraries) {
-      final originProjection = _project(origin, itinerary.points);
-      final destinationProjection = _project(destination.location, itinerary.points);
+      final originProjection = RouteProjector.project(origin, itinerary.points);
+      final destinationProjection = RouteProjector.project(
+        destination.location,
+        itinerary.points,
+      );
       if (originProjection == null || destinationProjection == null ||
           destinationProjection.distanceFromRouteMeters > _maximumDestinationRouteOffsetMeters ||
           destinationProjection.distanceAlongRouteMeters <= originProjection.distanceAlongRouteMeters) {
@@ -197,7 +199,7 @@ class TripPlannerController extends ChangeNotifier {
   }
 
   _ProjectedStop? _stopOnItinerary(BusStop stop, Itinerary itinerary) {
-    final projection = _project(stop.location, itinerary.points);
+    final projection = RouteProjector.project(stop.location, itinerary.points);
     if (projection == null) return null;
     return _ProjectedStop(
       stop: stop,
@@ -236,70 +238,18 @@ class TripPlannerController extends ChangeNotifier {
     return eligible.first;
   }
 
-  _RouteProjection? _project(LatLng point, List<LatLng> route) {
-    if (route.length < 2) return null;
-    var distanceBeforeSegment = 0.0;
-    _RouteProjection? closest;
-    for (var index = 0; index < route.length - 1; index++) {
-      final projection = _projectOntoSegment(point, route[index], route[index + 1]);
-      if (projection == null) continue;
-      final candidate = _RouteProjection(
-        distanceFromRouteMeters: projection.distanceMeters,
-        distanceAlongRouteMeters: distanceBeforeSegment + projection.segmentFraction * projection.lengthMeters,
-      );
-      if (closest == null || candidate.distanceFromRouteMeters < closest.distanceFromRouteMeters) {
-        closest = candidate;
-      }
-      distanceBeforeSegment += projection.lengthMeters;
-    }
-    return closest;
-  }
-
-  _SegmentProjection? _projectOntoSegment(LatLng point, LatLng start, LatLng end) {
-    const metersPerLatitudeDegree = 111320.0;
-    final latitudeRadians = ((start.latitude + end.latitude + point.latitude) / 3) * math.pi / 180;
-    final metersPerLongitudeDegree = metersPerLatitudeDegree * math.cos(latitudeRadians);
-    final endX = (end.longitude - start.longitude) * metersPerLongitudeDegree;
-    final endY = (end.latitude - start.latitude) * metersPerLatitudeDegree;
-    final pointX = (point.longitude - start.longitude) * metersPerLongitudeDegree;
-    final pointY = (point.latitude - start.latitude) * metersPerLatitudeDegree;
-    final lengthSquared = endX * endX + endY * endY;
-    if (lengthSquared == 0) return null;
-    final fraction = ((pointX * endX + pointY * endY) / lengthSquared).clamp(0.0, 1.0).toDouble();
-    final closestX = endX * fraction;
-    final closestY = endY * fraction;
-    return _SegmentProjection(
-      distanceMeters: math.sqrt(math.pow(pointX - closestX, 2) + math.pow(pointY - closestY, 2)),
-      segmentFraction: fraction,
-      lengthMeters: math.sqrt(lengthSquared),
-    );
-  }
-
   @override
   void dispose() {
     if (_destinationRepository is NominatimDestinationSearchRepository) {
+      // ignore: unnecessary_cast
       (_destinationRepository as NominatimDestinationSearchRepository).dispose();
     }
     super.dispose();
   }
 }
-
 class _ProjectedStop {
   const _ProjectedStop({required this.stop, required this.distanceAlongRouteMeters, required this.routeOffsetMeters});
   final BusStop stop;
   final double distanceAlongRouteMeters;
   final double routeOffsetMeters;
-}
-
-class _RouteProjection {
-  const _RouteProjection({required this.distanceFromRouteMeters, required this.distanceAlongRouteMeters});
-  final double distanceFromRouteMeters;
-  final double distanceAlongRouteMeters;
-}
-
-class _SegmentProjection {
-  const _SegmentProjection({required this.distanceMeters, required this.segmentFraction, required this.lengthMeters});
-  final double distanceMeters;
-  final double segmentFraction;
-  final double lengthMeters;
 }
